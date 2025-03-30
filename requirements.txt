@@ -1,0 +1,13 @@
+# Core dependencies
+nltk==3.8.1
+numpy==1.24.3
+
+# Sentence transformers with compatible dependencies
+sentence-transformers==2.2.2
+transformers==4.28.1
+torch==2.0.1
+huggingface_hub==0.12.1
+
+# Additional dependencies that might be needed
+tqdm==4.65.0
+scikit-learn==1.2.2
