@@ -1,242 +1,162 @@
-# Neural Information Retrieval System
+# **CSI 4107 Assignment 2 – Neural Information Retrieval System**
 
-## Team Members
-- [Your Name] [Student Number]
-- [Teammate's Name] [Teammate's Student Number]
 
-## Task Division
-- [Your Name]: Implementation of MS MARCO cross-encoder re-ranking, code integration, testing
-- [Teammate's Name]: Baseline improvement, evaluation analysis, report writing
+## Team Members and Task Distribution
 
-## Overview
-This project implements an advanced Information Retrieval (IR) system that extends a traditional TF-IDF baseline with neural IR methods. The system supports multiple retrieval approaches including:
+Bruno Kazadi (300210848):
+–Integrated the neural retrieval modules. Assisted in debugging and performance evaluation of the IR system.
 
-1. **Traditional TF-IDF baseline**: Implements the vector space model with cosine similarity
-2. **Dense Retrieval (Sentence-BERT)**: Uses sentence embeddings for retrieval
-3. **BERT Re-ranking**: Re-ranks documents using a BERT cross-encoder
-4. **Universal Sentence Encoder**: Retrieves documents using the Universal Sentence Encoder model
-5. **MS MARCO Re-ranking**: Re-ranks documents using the MS MARCO cross-encoder model
+Bernardo Caiado (300130165):
+– Contributed to data preprocessing and candidate generation via the traditional TF-IDF module.
 
-The goal is to achieve better evaluation scores compared to traditional IR systems by leveraging neural language models and deep learning techniques.
+Jun Ning (300286811):
+– Integrated the neural retrieval modules， designed and implemented the re-ranking and dense vector components.
 
-## Requirements
+## Overview 
+For Assignment 2, we extended our Assignment 1 IR system by incorporating neural retrieval methods. Two main approaches were implemented:
 
-### Dependencies
+* Dense Retrieval:
+Using a pre-trained Sentence-BERT model (default: all-MiniLM-L6-v2), we encode both documents and queries into dense vector representations. Documents are then ranked by computing the cosine similarity between the query and document embeddings.
+
+* BERT Re-Ranking:
+We first use our baseline TF-IDF retrieval system (from Assignment 1) to generate a candidate list of up to 100 documents for each query. Then, we re-rank these candidates with a pre-trained CrossEncoder model (default: cross-encoder/ms-marco-MiniLM-L-6-v2) that computes a refined similarity score for each query–document pair.
+
+Both methods were implemented in a new Python file (assignment2.py) so that the original Assignment 1 code remains unchanged.
+
+
+## Program Functionality
+* Preprocessing:
+The system uses NLTK to tokenize text, remove punctuation and digits, filter out stopwords, discard words with fewer than three characters, and apply the Porter stemmer. In addition to the preprocessed tokens, the original text is retained (stored as “raw”) to support neural retrieval methods.
+
+* Data Loading:
+The corpus (in JSONL format) is loaded with each document’s _id, title, and text fields concatenated. Queries (also in JSONL format) are read and only those with relevance judgments are retained. Relevance annotations (from a TSV file) indicate which documents are relevant for each query.
+
+* Indexing and Baseline Retrieval:
+An inverted index is built from the preprocessed tokens. For each query, a TF-IDF vector is computed and candidate documents (those containing at least one query term) are scored using cosine similarity. The top 100 results are output in TREC format.
+
+* Dense Retrieval:
+The system uses the SentenceTransformer to generate dense embeddings for both the documents (using the original text) and the queries. Cosine similarity between these embeddings is computed to rank documents directly.
+
+* BERT Re-Ranking:
+The baseline TF-IDF method is first used to produce a candidate set of documents. Then, each query–document pair is passed to a CrossEncoder model to compute a refined relevance score, and the candidates are re-ranked accordingly.
+
+* Output:
+The results for each query are written in TREC format (i.e., query_id Q0 doc_id rank score run_tag) to a file. Our best system’s results (from Dense Retrieval) are submitted.
+
+
+## How to Run
+Dependencies:
+Ensure Python 3 is installed. The following Python packages are required:
+* nltk
+* sentence-transformers
+* numpy
+  
+**You can install these using pip**:
+* pip install nltk sentence-transformers numpy
+  
+**Running the System:**
+  The system is invoked from the command line：
+
+  * ![image](https://github.com/user-attachments/assets/31d69674-0485-4e51-a924-c86c582d3815)
+
+
+（To run the BERT Re-Ranking method, replace --method dense with --method bert.）
+  *  Sample run of dense re-ranking, around 3 minutes for run:
+     ![image](https://github.com/user-attachments/assets/7d0f3212-d505-44bf-916e-6093e44f6c1b)
+
+  *  Sample run of bert re-ranking, around 25 minutes for run:
+     ![image](https://github.com/user-attachments/assets/f08b3659-2a62-4f41-b624-2e22bc573a3a)
+
+
+**Evaluation Process Using trec_eval**:
 ```
-# Core dependencies
-nltk==3.8.1
-numpy==1.24.3
+trec_eval formated-test.tsv Results_bert.txt
 
-# Sentence transformers with compatible dependencies
-sentence-transformers==2.2.2
-transformers==4.28.1
-torch==2.0.1
-huggingface_hub==0.12.1
-
-# Additional dependencies
-tqdm==4.65.0
-scikit-learn==1.2.2
-```
-
-### Installation
-1. Install the required packages:
-```bash
-pip install -r requirements.txt
-```
-
-2. Download the NLTK resources (one-time setup):
-```python
-import nltk
-nltk.download('stopwords')
-nltk.download('punkt')
-```
-
-## Data Format
-The system works with the following data formats:
-
-- **Corpus**: JSONL file with documents, each containing:
-  - `_id`: Document identifier
-  - `title`: Document title
-  - `text`: Document content
-
-- **Queries**: JSONL file with queries, each containing:
-  - `_id`: Query identifier
-  - `text`: Query text
-
-- **Relevance Judgments**: TSV file in TREC format:
-  - Column 1: Query ID
-  - Column 2: Document ID
-  - Column 3: Relevance score
-
-## Usage
-Run the program using the following command:
-
-```bash
-python assignment2.py <corpus_file> <queries_file> <relevance_file> --method <method> [options]
-```
-
-### Required Arguments
-- `<corpus_file>`: Path to the corpus in JSONL format
-- `<queries_file>`: Path to the queries in JSONL format
-- `<relevance_file>`: Path to the relevance judgments file in TSV format
-
-### Methods
-Specify one of the following retrieval methods with the `--method` parameter:
-- `tfidf`: Traditional TF-IDF retrieval (baseline)
-- `dense`: Dense retrieval using Sentence-BERT
-- `bert`: BERT-based re-ranking of TF-IDF candidates
-- `use`: Universal Sentence Encoder retrieval
-- `msmarco-rerank`: MS MARCO cross-encoder re-ranking of TF-IDF candidates
-
-### Optional Arguments
-- `--top_k <number>`: Number of documents to return per query (default: 100)
-- `--dense_model <model_name>`: Model name for dense retrieval
-- `--bert_model <model_name>`: Model name for BERT re-ranking
-- `--use_model <model_name>`: Model name for Universal Sentence Encoder
-- `--msmarco_rerank_model <model_name>`: Model name for MS MARCO re-ranking
-
-### Examples
-1. Run TF-IDF baseline:
-```bash
-python assignment2.py corpus.jsonl queries.jsonl test.tsv --method tfidf
 ```
 
-2. Run MS MARCO cross-encoder re-ranking:
-```bash
-python assignment2.py corpus.jsonl queries.jsonl test.tsv --method msmarco-rerank
+and 
+
 ```
+trec_eval formated-test.tsv Results_dense.txt
 
-3. Specify a different number of results:
-```bash
-python assignment2.py corpus.jsonl queries.jsonl test.tsv --method msmarco-rerank --top_k 50
 ```
-
-## Implementation Details
-
-### Text Preprocessing
-- Punctuation and digit removal
-- Tokenization
-- Stopword removal
-- Stemming using Porter Stemmer
-
-### TF-IDF Baseline
-- Calculates term frequency (TF) for each document and query
-- Computes inverse document frequency (IDF) across the corpus
-- Builds an inverted index for efficient candidate generation
-- Ranks documents using cosine similarity between query and document vectors
-
-### Neural Methods
-
-#### Dense Retrieval (Sentence-BERT)
-- Encodes documents and queries into a dense vector space using Sentence-BERT
-- Computes cosine similarity between query and document embeddings
-- Ranks documents based on similarity scores
-
-#### BERT Re-ranking
-- First retrieves candidate documents using TF-IDF
-- Uses a BERT cross-encoder to re-rank candidates by processing query-document pairs
-- Returns the top-k documents based on the cross-encoder scores
-
-#### Universal Sentence Encoder
-- Uses the Universal Sentence Encoder to generate embeddings for documents and queries
-- Computes similarities in the embedding space
-- Ranks documents based on the similarities
-
-#### MS MARCO Re-ranking
-- First retrieves candidate documents using TF-IDF
-- Uses a cross-encoder model trained on the MS MARCO dataset to re-rank candidates
-- Optimized for relevance ranking in information retrieval tasks
-- Processing query-document pairs together allows for better relevance assessment
-
-### Output Format
-Results are written in TREC format:
+ **Alternatively,you can also run python evaluate.py in the terminal**
+- Using the Python version of TREC eval (pytrec_eval) is strongly recommended because it easily integrates into your Python pipeline, avoids compilation or system compatibility issues, and provides fast, accurate evaluation of IR metrics directly from your scripts.
+ ```
+ python evaluate.py
 ```
-query_id Q0 doc_id rank score tag
-```
-Where:
-- `query_id`: ID of the query
-- `Q0`: Literal "Q0" (a tradition from TREC)
-- `doc_id`: ID of the retrieved document
-- `rank`: Rank position (1-based)
-- `score`: Similarity score (higher is better)
-- `tag`: A string identifier for the run
+ ![image](https://github.com/user-attachments/assets/6efc6284-1df0-4496-a3af-c68b7f1fe7b9)
 
-## Architecture and Design
 
-### System Components
-The system follows a modular design with these main components:
+**Output:**
 
-1. **Data Processing**: Functions for reading and preprocessing corpus and queries
-2. **Indexing**: Building inverted indices for efficient retrieval
-3. **Scoring**: Various scoring methods (TF-IDF, neural embeddings)
-4. **Retrieval**: Retrieving relevant documents based on scores
-5. **Re-ranking**: Improving initial results with neural re-ranking
+The program outputs a results file (e.g., Results_dense.txt for Dense Retrieval， Results_Bert.txt for Bert Retrievak) in TREC format. This file, along with our report, is included in the submission.
 
-### Neural IR Pipeline
-For neural re-ranking methods, the system implements a two-stage pipeline:
+## Algorithms, Data Structures, and Optimizations
 
-1. **First Stage (Retrieval)**:
-   - Efficient retrieval of candidate documents using TF-IDF
-   - Reduces the search space from the entire corpus to a manageable set
+- Preprocessing:
+   * Algorithms: Standard tokenization, stopword removal, and Porter stemming.
+   * Data Structures: Python lists for tokens and sets for stopwords; dictionaries to store document data.
+   * Optimizations: Converting text to lowercase and filtering out short tokens to reduce noise.
+     
+-Indexing and Baseline Retrieval:
+   * Algorithms: Building an inverted index to quickly identify candidate documents. TF and IDF computations are used to produce TF-IDF vectors.
+   * Data Structures: Dictionaries (or defaultdict) to map terms to sets of document IDs; dictionaries to store vector representations.
+   * Optimizations: Limiting cosine similarity computations only to candidate documents (those sharing at least one query term).
 
-2. **Second Stage (Re-ranking)**:
-   - More expensive neural models process only the candidate set
-   - Query and document are processed together (cross-attention)
-   - Final ranking based on neural model scores
+-Dense Retrieval:
+   * Algorithms: Dense vector representations are generated using a pre-trained Sentence-BERT model. Cosine similarity is computed between query and document embeddings.
+   * Data Structures: Numpy arrays for efficient numerical operations.
+   * Optimizations: Use of pre-trained models that are optimized for speed (e.g., all-MiniLM-L6-v2), and batch encoding of document texts to reduce computational overhed.
 
-### Optimization Techniques
-1. **Inverted Index**: Enables efficient retrieval of candidate documents
-2. **Two-Stage Retrieval**: Balances efficiency and accuracy
-3. **Vectorized Operations**: Numpy used for efficient similarity calculations
-4. **Batch Processing**: When applicable, documents are encoded in batches
+- BERT Re-Ranking:
+    * Algorithms: Candidate generation via baseline retrieval followed by scoring with a CrossEncoder that directly computes a relevance score for each query–document pair.
+    * Data Structures: Python lists to construct query–document pairs; dictionaries to store re-ranked results.
+    * Optimizations: Limiting the re-ranking process to a small candidate set (top 100) to reduce the number of expensive model inferences.
+ 
 
-## Evaluation
+## Sample Output – First 10 Answers for Queries 1 and 3
+![image](https://github.com/user-attachments/assets/3ab6da7c-326c-4b31-a634-2c9e909e5b52)
+![image](https://github.com/user-attachments/assets/4334ba98-b8ed-41f6-8ac2-ec2e4787650e)
 
-### Metrics
-The system is evaluated using standard IR metrics:
-- **Mean Average Precision (MAP)**: Measures the quality of the entire ranked list
-- **Precision at k (P@10)**: Measures precision at the top 10 results
 
-### Results
-Below are the evaluation results for all implemented methods:
+## Results and Discussion ：
+- for the Dense Retrieval：
 
-| Method | MAP | P@10 |
-|--------|-----|------|
-| TF-IDF (Baseline) | 0.XX | 0.XX |
-| Dense (Sentence-BERT) | 0.XX | 0.XX |
-| BERT Re-ranking | 0.XX | 0.XX |
-| Universal Sentence Encoder | 0.XX | 0.XX |
-| MS MARCO Re-ranking | 0.XX | 0.XX |
+![image](https://github.com/user-attachments/assets/fb60bfae-ceb1-48b7-b279-8c5023f32f1a)
 
-*Note: Replace the placeholder values with your actual evaluation results.*
+- for the Bert Retrieval:
 
-## Analysis and Discussion
+![image](https://github.com/user-attachments/assets/3aa5b0be-d5a1-431f-8964-eee6cb7cb071)
 
-### Performance Comparison
-The MS MARCO re-ranking method achieved the best performance among all tested methods, showing a significant improvement over the baseline TF-IDF approach. The improvements can be attributed to:
 
-1. **Contextual Understanding**: The cross-encoder model can understand the contextual relationship between query and document
-2. **Domain-specific Training**: MS MARCO models are specifically trained on search relevance tasks
-3. **Cross-attention Mechanism**: Processing query and document together allows for better relevance assessment
+-the results from assignment 1:
+![image](https://github.com/user-attachments/assets/41b3833a-f313-4d04-8cd2-857b905477f8)
 
-### Efficiency Considerations
-While neural methods provide better accuracy, they come with increased computational costs:
-- The two-stage pipeline helps mitigate this by using TF-IDF for candidate generation
-- Re-ranking only a subset of documents makes neural methods practical for real-world applications
+![image](https://github.com/user-attachments/assets/5231281c-fa74-4a28-87c5-c2e5b7e8d5db)
 
-### Future Improvements
-Potential enhancements for the system include:
-1. Exploring more advanced neural architectures
-2. Implementing hybrid scoring methods
-3. Adding query expansion and relevance feedback mechanisms
-4. Exploring LLM-based retrieval methods
 
-## Conclusion
-This implementation demonstrates that neural IR methods, particularly MS MARCO cross-encoder re-ranking, can significantly improve retrieval performance compared to traditional lexical matching methods. The two-stage retrieval pipeline provides a practical approach to leveraging neural models in IR systems.
+### Comparison with Assignment 1
 
-## References
-1. Karpukhin, V., et al. (2020). Dense Passage Retrieval for Open-Domain Question Answering.
-2. Nogueira, R., & Cho, K. (2019). Passage Re-ranking with BERT.
-3. Reimers, N., & Gurevych, I. (2019). Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks.
-4. Nguyen, T., et al. (2016). MS MARCO: A Human Generated MAchine Reading COmprehension Dataset.
-5. Lin, J., et al. (2021). Pretrained Transformers for Text Ranking: BERT and Beyond.
+In Assignment 1, our system relied on a traditional vector space model (e.g., TF–IDF) and achieved a MAP score of around 0.50 (see the second image in the screenshots). While this performance was satisfactory as a baseline, we aimed to improve ranking quality in Assignment 2 by integrating neural retrieval methods.
+
+* BERT Retrieval (Assignment 2): Achieved a MAP of 0.6501, NDCG of 0.7128, Reciprocal Rank of 0.6648, and P@10 of 0.0923.
+
+* Dense Re-Ranking (Assignment 2): Achieved a MAP of 0.6032, NDCG of 0.6768, Reciprocal Rank of 0.6111, and P@10 of 0.0883.
+
+Both neural methods outperform the Assignment 1 system by a noticeable margin (up to +0.15 in MAP for Dense Retrieval). This improvement indicates that leveraging pre-trained language models and dense embeddings provides a stronger representation of semantic relationships between queries and documents than a purely term-based TF–IDF approach.
+
+
+In particular, our evaluation shows that the BERT Re-Ranking approach produced the best overall MAP, indicating that re-scoring the candidate documents using a pre-trained CrossEncoder model can capture more refined semantic relationships between queries and documents. This improved MAP suggests that, when starting from a traditional candidate set, the neural re-ranking step with BERT more effectively identifies the most relevant documents compared to directly using dense embeddings. In contrast, although Dense Retrieval also yielded competitive results, its MAP value was slightly lower, highlighting the added benefit of a re-scoring process in enhancing retrieval precision.
+
+Overall, these results confirm that incorporating neural methods leads to more accurate retrieval performance compared to the original vector space model system from Assignment 1.
+
+## References: 
+* TREC Eval: https://github.com/cvangysel/pytrec_eval
+* Nogueira, R., & Cho, K. (2020). Passage Re-ranking with BERT. arXiv preprint arXiv:1901.04085.
+* Reimers, N., & Gurevych, I. (2019). Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks. In Proceedings of EMNLP-IJCNLP.
+
+
+
+
+
